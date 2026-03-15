@@ -1,0 +1,58 @@
+workflows:
+  ios-development:
+    name: URReefcam – Development Build
+    max_build_duration: 60
+    instance_type: mac_mini_m1
+    environment:
+      xcode: 15.4
+      vars:
+        XCODE_SCHEME: URReefcam
+        BUNDLE_ID: com.ureefcam.app
+
+    scripts:
+      - name: Install XcodeGen
+        script: brew install xcodegen
+
+      - name: Generate Xcode project
+        script: |
+          cd $CM_BUILD_DIR
+          xcodegen generate
+
+      - name: Set build number
+        script: |
+          BUILD_NUM=$(($(git rev-list HEAD --count)))
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUM" \
+            URReefcam/Info.plist
+
+      - name: Build (unsigned – for Sideloadly)
+        script: |
+          xcodebuild \
+            -project URReefcam.xcodeproj \
+            -scheme "$XCODE_SCHEME" \
+            -configuration Debug \
+            -sdk iphoneos \
+            -derivedDataPath DerivedData \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package as IPA (unsigned)
+        script: |
+          APP_PATH=$(find DerivedData -name "*.app" | head -1)
+          mkdir -p Payload
+          cp -r "$APP_PATH" Payload/
+          zip -r URReefcam_unsigned.ipa Payload
+          rm -rf Payload
+
+    artifacts:
+      - URReefcam_unsigned.ipa
+      - DerivedData/Logs/**
+
+    publishing:
+      email:
+        recipients:
+          - your@email.com   # <-- change this to your email
+        notify:
+          success: true
+          failure: true
