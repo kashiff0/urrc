@@ -71,7 +71,7 @@ final class CameraManager: ObservableObject {
 
         if session.canAddOutput(photoOutput) {
             session.addOutput(photoOutput)
-            photoOutput.maxPhotoDimensions = device.activeFormat.supportedMaxPhotoDimensions.last ?? .zero
+            photoOutput.maxPhotoDimensions = device.activeFormat.supportedMaxPhotoDimensions.last ?? CMVideoDimensions(width: 0, height: 0)
             let proRAW = photoOutput.isAppleProRAWSupported
             if proRAW { photoOutput.isAppleProRAWEnabled = true }
             DispatchQueue.main.async { self.isProRAWAvailable = proRAW }
@@ -105,7 +105,7 @@ final class CameraManager: ObservableObject {
                 self.currentDevice = device
             }
 
-            self.photoOutput.maxPhotoDimensions = device.activeFormat.supportedMaxPhotoDimensions.last ?? .zero
+            self.photoOutput.maxPhotoDimensions = device.activeFormat.supportedMaxPhotoDimensions.last ?? CMVideoDimensions(width: 0, height: 0)
             let proRAW = self.photoOutput.isAppleProRAWSupported
             if proRAW { self.photoOutput.isAppleProRAWEnabled = true }
 
