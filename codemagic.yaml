@@ -52,7 +52,7 @@ workflows:
     publishing:
       email:
         recipients:
-          - your@email.com   # <-- change this to your email
+          - kashiff0@gmail.com
         notify:
           success: true
           failure: true
