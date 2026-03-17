@@ -15,7 +15,6 @@ struct ReefSchedule: Codable, Identifiable {
 
 // MARK: - ScheduleManager
 
-@MainActor
 final class ScheduleManager: ObservableObject {
 
     static let shared = ScheduleManager()

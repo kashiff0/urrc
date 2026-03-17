@@ -26,7 +26,6 @@ enum VideoMode: String, CaseIterable, Identifiable {
 
 // MARK: - VideoManager
 
-@MainActor
 final class VideoManager: ObservableObject {
 
     @Published var selectedMode: VideoMode = .dolbyVision

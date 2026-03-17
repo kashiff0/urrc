@@ -29,7 +29,6 @@ extension WBPreset {
 
 // MARK: - Custom Preset Store
 
-@MainActor
 final class WBPresetStore: ObservableObject {
 
     private let key = "com.ureefcam.customPresets"

@@ -30,7 +30,6 @@ enum TimeLapseInterval: String, CaseIterable, Identifiable {
 
 // MARK: - TimeLapseManager
 
-@MainActor
 final class TimeLapseManager: ObservableObject {
 
     @Published var isCapturing = false

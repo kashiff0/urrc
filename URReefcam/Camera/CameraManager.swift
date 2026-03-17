@@ -2,7 +2,9 @@ import AVFoundation
 import Photos
 import SwiftUI
 
-@MainActor
+// Note: No @MainActor on the class — sessionQueue.async blocks access stored properties,
+// which Swift 5.9 strict concurrency disallows if the class is @MainActor-isolated.
+// All @Published updates are dispatched to DispatchQueue.main explicitly.
 final class CameraManager: ObservableObject {
 
     // MARK: - Published state
@@ -34,11 +36,11 @@ final class CameraManager: ObservableObject {
             guard let self else { return }
             self.configureSession()
             self.session.startRunning()
+            let running = self.session.isRunning
+            let device = self.currentDevice
             DispatchQueue.main.async {
-                self.isSessionRunning = self.session.isRunning
-                if let device = self.currentDevice {
-                    self.onDeviceReady?(device)
-                }
+                self.isSessionRunning = running
+                if let device { self.onDeviceReady?(device) }
             }
         }
     }
@@ -56,7 +58,6 @@ final class CameraManager: ObservableObject {
         session.beginConfiguration()
         session.sessionPreset = .photo
 
-        // Add video input for the main lens
         guard let device = bestDevice(for: .main),
               let input = try? AVCaptureDeviceInput(device: device) else {
             session.commitConfiguration()
@@ -68,28 +69,22 @@ final class CameraManager: ObservableObject {
             currentDevice = device
         }
 
-        // Photo output
         if session.canAddOutput(photoOutput) {
             session.addOutput(photoOutput)
             photoOutput.maxPhotoDimensions = device.activeFormat.supportedMaxPhotoDimensions.last ?? .zero
-            isProRAWAvailable = photoOutput.isAppleProRAWSupported
-            if isProRAWAvailable {
-                photoOutput.isAppleProRAWEnabled = true
-            }
+            let proRAW = photoOutput.isAppleProRAWSupported
+            if proRAW { photoOutput.isAppleProRAWEnabled = true }
+            DispatchQueue.main.async { self.isProRAWAvailable = proRAW }
         }
 
-        // Lock flash off
         configureFlash(device: device)
-
         session.commitConfiguration()
     }
 
     private func configureFlash(device: AVCaptureDevice) {
         do {
             try device.lockForConfiguration()
-            if device.isFlashModeSupported(.off) {
-                device.flashMode = .off
-            }
+            if device.isFlashModeSupported(.off) { device.flashMode = .off }
             device.unlockForConfiguration()
         } catch {}
     }
@@ -103,27 +98,23 @@ final class CameraManager: ObservableObject {
                   let newInput = try? AVCaptureDeviceInput(device: device) else { return }
 
             self.session.beginConfiguration()
-
-            if let old = self.videoDeviceInput {
-                self.session.removeInput(old)
-            }
+            if let old = self.videoDeviceInput { self.session.removeInput(old) }
             if self.session.canAddInput(newInput) {
                 self.session.addInput(newInput)
                 self.videoDeviceInput = newInput
                 self.currentDevice = device
             }
 
-            // Re-apply photo output settings
             self.photoOutput.maxPhotoDimensions = device.activeFormat.supportedMaxPhotoDimensions.last ?? .zero
-            let proRAWAvailable = self.photoOutput.isAppleProRAWSupported
-            if proRAWAvailable { self.photoOutput.isAppleProRAWEnabled = true }
+            let proRAW = self.photoOutput.isAppleProRAWSupported
+            if proRAW { self.photoOutput.isAppleProRAWEnabled = true }
 
             self.configureFlash(device: device)
             self.session.commitConfiguration()
 
             DispatchQueue.main.async {
                 self.currentLens = lens
-                self.isProRAWAvailable = proRAWAvailable
+                self.isProRAWAvailable = proRAW
                 self.onDeviceReady?(device)
             }
         }
@@ -134,7 +125,6 @@ final class CameraManager: ObservableObject {
         case .ultraWide:
             return AVCaptureDevice.default(.builtInUltraWideCamera, for: .video, position: .back)
         case .main:
-            // Prefer triple camera system for best lens access
             return AVCaptureDevice.default(.builtInTripleCamera, for: .video, position: .back)
                 ?? AVCaptureDevice.default(.builtInDualCamera, for: .video, position: .back)
                 ?? AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back)
@@ -148,9 +138,7 @@ final class CameraManager: ObservableObject {
     func capturePhoto(whiteBalanceManager: WhiteBalanceManager) {
         let settings = buildPhotoSettings()
         let delegate = PhotoCaptureDelegate { [weak self] image in
-            DispatchQueue.main.async {
-                self?.lastThumbnail = image
-            }
+            DispatchQueue.main.async { self?.lastThumbnail = image }
         }
         photoCaptureDelegate = delegate
         photoOutput.capturePhoto(with: settings, delegate: delegate)
@@ -159,18 +147,19 @@ final class CameraManager: ObservableObject {
     private func buildPhotoSettings() -> AVCapturePhotoSettings {
         if isProRAWAvailable,
            let rawFormat = photoOutput.availableRawPhotoPixelFormatTypes.first {
-            let settings = AVCapturePhotoSettings(rawPixelFormatType: rawFormat,
-                                                  processedFormat: [AVVideoCodecKey: AVVideoCodecType.hevc])
-            settings.flashMode = .off
-            return settings
-        } else {
-            let settings = AVCapturePhotoSettings()
+            let settings = AVCapturePhotoSettings(
+                rawPixelFormatType: rawFormat,
+                processedFormat: [AVVideoCodecKey: AVVideoCodecType.hevc]
+            )
             settings.flashMode = .off
             return settings
         }
+        let settings = AVCapturePhotoSettings()
+        settings.flashMode = .off
+        return settings
     }
 
-    // MARK: - Zoom (for telephoto fine control)
+    // MARK: - Zoom
 
     func setZoomFactor(_ factor: CGFloat) {
         guard let device = currentDevice else { return }
@@ -190,7 +179,7 @@ final class CameraManager: ObservableObject {
 
 enum LensOption: String, CaseIterable, Identifiable {
     case ultraWide = "0.5×"
-    case main = "1×"
+    case main      = "1×"
     case telephoto = "4×"
     var id: String { rawValue }
 }
@@ -198,8 +187,8 @@ enum LensOption: String, CaseIterable, Identifiable {
 // MARK: - Capture Mode
 
 enum CaptureMode: String, CaseIterable {
-    case photo = "Photo"
-    case video = "Video"
+    case photo     = "Photo"
+    case video     = "Video"
     case timeLapse = "Time-lapse"
 }
 
@@ -216,22 +205,17 @@ private final class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegat
     func photoOutput(_ output: AVCapturePhotoOutput,
                      didFinishProcessingPhoto photo: AVCapturePhoto,
                      error: Error?) {
-        guard error == nil else {
-            completion(nil)
-            return
-        }
+        guard error == nil else { completion(nil); return }
 
-        // Save to Photos library
         PHPhotoLibrary.shared().performChanges({
-            let creationRequest = PHAssetCreationRequest.forAsset()
-            if let fileData = photo.fileDataRepresentation() {
-                creationRequest.addResource(with: .photo, data: fileData, options: nil)
+            let req = PHAssetCreationRequest.forAsset()
+            if let data = photo.fileDataRepresentation() {
+                req.addResource(with: .photo, data: data, options: nil)
             }
         })
 
-        // Thumbnail for shutter button
-        if let data = photo.fileDataRepresentation(), let image = UIImage(data: data) {
-            completion(image)
+        if let data = photo.fileDataRepresentation() {
+            completion(UIImage(data: data))
         } else {
             completion(nil)
         }
