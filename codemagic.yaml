@@ -52,7 +52,7 @@ workflows:
     publishing:
       email:
         recipients:
-          - kashiff0@gmail.com
+          - geovonni.o@gmail.com
         notify:
           success: true
           failure: true
