@@ -21,8 +21,10 @@ workflows:
       - name: Set build number
         script: |
           BUILD_NUM=$(($(git rev-list HEAD --count)))
-          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUM" \
-            URReefcam/Info.plist
+          PLIST=$(find . -path "*/DerivedData" -prune -o -name "Info.plist" -print | head -1)
+          if [ -n "$PLIST" ]; then
+            /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUM" "$PLIST"
+          fi
 
       - name: Build (unsigned – for Sideloadly)
         script: |

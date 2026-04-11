@@ -12,8 +12,11 @@ final class WhiteBalanceManager: ObservableObject {
     private weak var device: AVCaptureDevice?
     private let sessionQueue = DispatchQueue(label: "com.ureefcam.wb", qos: .userInitiated)
 
-    // MARK: - Ranges (matching dev brief)
-    static let temperatureRange: ClosedRange<Float> = 1000...10000
+    // MARK: - Ranges
+    // Upper limit is 16 000 K — AVFoundation can compute gains beyond 10 K but
+    // hardware gain clamping means the visual effect plateaus around 14–16 K on
+    // most iPhones.  Raising the ceiling lets the device show what it can do.
+    static let temperatureRange: ClosedRange<Float> = 1000...16000
     static let tintRange: ClosedRange<Float> = -150...150
 
     // MARK: - Configuration

@@ -140,6 +140,16 @@ private struct WBPresetSheet: View {
                         presetRow(preset)
                     }
                 }
+                Section {
+                    ForEach(WBPreset.gels) { preset in
+                        presetRow(preset)
+                    }
+                } header: {
+                    Text("Gel Filters")
+                } footer: {
+                    Text("Counteracts blue/actinic reef lighting — equivalent to a physical CTO or tobacco gel over the lens.")
+                        .font(.caption2)
+                }
                 if !store.customPresets.isEmpty {
                     Section("Custom") {
                         ForEach(store.customPresets) { preset in
