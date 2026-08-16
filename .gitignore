@@ -22,6 +22,11 @@ build/
 # VS Code
 .vscode/
 
+# roku-remote (Node)
+node_modules/
+# Holds the Sony TV pre-shared key — never commit
+roku-remote/config.json
+
 # Fastlane
 fastlane/report.xml
 fastlane/Preview.html

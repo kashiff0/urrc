@@ -1,0 +1,13 @@
+{
+  "name": "roku-remote",
+  "version": "0.1.0",
+  "private": true,
+  "description": "iPhone web remote for a Roku stick, with volume and power passing through to a Sony TV",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
