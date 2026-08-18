@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - "**"
-  pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: ios-${{ github.workflow }}-${{ github.ref }}
@@ -38,6 +38,21 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             build | tee xcodebuild.log
+
+      - name: Package unsigned IPA
+        run: |
+          APP_PATH=$(find DerivedData/Build/Products/Debug-iphoneos -maxdepth 1 -name "*.app" -print -quit)
+          test -n "$APP_PATH"
+          mkdir Payload
+          cp -R "$APP_PATH" Payload/
+          zip -qry URReefcam_unsigned.ipa Payload
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: URReefcam-unsigned-ipa
+          path: URReefcam_unsigned.ipa
+          if-no-files-found: error
 
       - name: Upload build log on failure
         if: failure()
