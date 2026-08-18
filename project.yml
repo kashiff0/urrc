@@ -28,7 +28,11 @@ targets:
         CFBundleDisplayName: URReefcam
         CFBundleShortVersionString: "1.0"
         CFBundleVersion: "1"
-        UILaunchStoryboardName: ""
+        # An empty launch storyboard name puts iOS into legacy compatibility
+        # mode — the app renders letterboxed instead of full-screen. The
+        # UILaunchScreen dictionary is the modern replacement.
+        UILaunchScreen:
+          UIColorName: LaunchBackground
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         UIRequiresFullScreen: true

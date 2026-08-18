@@ -18,6 +18,14 @@ struct CameraControlBar: View {
             case .video:
                 VideoModeSelector(videoManager: videoManager)
                     .padding(.bottom, 4)
+                if let notice = videoManager.unsupportedModeNotice {
+                    Text(notice)
+                        .font(.system(size: 11))
+                        .foregroundColor(.orange)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 2)
+                }
                 if videoManager.isRecording {
                     Text(videoManager.formattedDuration)
                         .font(.system(size: 13, weight: .semibold, design: .monospaced))
@@ -56,7 +64,6 @@ struct CameraControlBar: View {
                 ShutterButton(
                     captureMode: cameraManager.captureMode,
                     isRecording: videoManager.isRecording || timeLapseManager.isCapturing,
-                    thumbnail: nil,
                     onShutter: handleShutter
                 )
 
@@ -77,7 +84,7 @@ struct CameraControlBar: View {
     private func handleShutter() {
         switch cameraManager.captureMode {
         case .photo:
-            cameraManager.capturePhoto(whiteBalanceManager: whiteBalanceManager)
+            cameraManager.capturePhoto()
 
         case .video:
             if videoManager.isRecording {

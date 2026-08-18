@@ -4,7 +4,6 @@ struct ShutterButton: View {
 
     let captureMode: CaptureMode
     let isRecording: Bool
-    let thumbnail: UIImage?
     let onShutter: () -> Void
 
     var body: some View {

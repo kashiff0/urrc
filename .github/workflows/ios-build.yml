@@ -1,0 +1,62 @@
+name: iOS compile check
+
+on:
+  push:
+    branches:
+      - "**"
+  workflow_dispatch:
+
+concurrency:
+  group: ios-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Compile for iPhone
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project URReefcam.xcodeproj \
+            -scheme URReefcam \
+            -configuration Debug \
+            -sdk iphoneos \
+            -derivedDataPath DerivedData \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build | tee xcodebuild.log
+
+      - name: Package unsigned IPA
+        run: |
+          APP_PATH=$(find DerivedData/Build/Products/Debug-iphoneos -maxdepth 1 -name "*.app" -print -quit)
+          test -n "$APP_PATH"
+          mkdir Payload
+          cp -R "$APP_PATH" Payload/
+          zip -qry URReefcam_unsigned.ipa Payload
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: URReefcam-unsigned-ipa
+          path: URReefcam_unsigned.ipa
+          if-no-files-found: error
+
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-log
+          path: xcodebuild.log

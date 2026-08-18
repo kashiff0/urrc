@@ -74,10 +74,22 @@ iPhone → Settings → Privacy & Security → Developer Mode → **On** → Res
 
 ## Testing checklist
 
+### First launch (the parts that used to fail)
+- [ ] Camera prompt appears, and tapping **Allow** shows live preview immediately
+      — no force-quit needed
+- [ ] Tapping **Don't Allow** shows the "Camera access is off" panel with a
+      working Open Settings link, not a black screen
+- [ ] App fills the whole display — no black letterbox bars around the UI
+
+### Capture
 - [ ] White balance sliders update preview color in real-time
 - [ ] RGB gain clamping: drag temp to extremes — no crash
 - [ ] Lens buttons (0.5× / 1× / 4×) switch without freezing
 - [ ] Photo mode: tap shutter → thumbnail appears
-- [ ] Video mode: tap record → red timer appears → tap stop → saved to Photos
-- [ ] Time-lapse: start → frames count up → stop → video assembled in Photos
+- [ ] ProRAW on: one shutter press produces **one** item in Photos, not two
+- [ ] Video mode: mic prompt appears on first entry; recording has audio
+- [ ] Video mode: switching mode actually changes the recorded resolution/fps
+- [ ] ProRes on a non-15-Pro device shows the orange fallback notice
+- [ ] White balance stays manual after a video recording (it used to reset)
+- [ ] Time-lapse: screen stays awake, frames count up, video lands in Photos
 - [ ] Scheduled capture: add a schedule 1 min from now → notification fires

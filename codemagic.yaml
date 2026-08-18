@@ -1,8 +1,27 @@
 workflows:
   ios-development:
     name: URReefcam – Development Build
-    max_build_duration: 60
+    # A healthy build finishes well inside 15 minutes. Capping at 30 keeps a
+    # hung run from eating a twelfth of the monthly free-tier allowance.
+    max_build_duration: 30
     instance_type: mac_mini_m1
+
+    # Build every push on every branch. Without this the workflow only ran when
+    # someone clicked "Start new build", so a branch could sit broken until it
+    # was built by hand — which is how the last round of build breaks was found.
+    #
+    # Only `push` is listed on purpose: adding `pull_request` would build a PR
+    # branch twice for the same commit and burn double the free-tier minutes.
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: '*'
+          include: true
+          source: true
+      # Superseded commits stop building as soon as a newer one arrives.
+      cancel_previous_builds: true
+
     environment:
       xcode: 16.2
       vars:
