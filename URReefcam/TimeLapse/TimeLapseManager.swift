@@ -55,6 +55,14 @@ final class TimeLapseManager: ObservableObject {
         frameURLs = []
         frameCount = 0
         isCapturing = true
+
+        // iOS suspends the app — and its timers — shortly after the screen
+        // locks, which would silently truncate a long time-lapse. Holding the
+        // idle timer keeps the display awake for the duration. The app still
+        // has to stay in the foreground; that's a platform limit, not a
+        // setting we can code around.
+        UIApplication.shared.isIdleTimerDisabled = true
+
         scheduleNextCapture()
     }
 
@@ -63,6 +71,8 @@ final class TimeLapseManager: ObservableObject {
         isCapturing = false
         captureTimer?.invalidate()
         captureTimer = nil
+        UIApplication.shared.isIdleTimerDisabled = false
+
         if !frameURLs.isEmpty {
             Task { await assembleVideo() }
         }
@@ -71,12 +81,15 @@ final class TimeLapseManager: ObservableObject {
     // MARK: - Frame capture
 
     private func scheduleNextCapture() {
-        captureTimer = Timer.scheduledTimer(withTimeInterval: selectedInterval.seconds,
-                                            repeats: false) { [weak self] _ in
+        let timer = Timer(timeInterval: selectedInterval.seconds, repeats: false) { [weak self] _ in
             Task { @MainActor in
                 self?.captureFrame()
             }
         }
+        // .common keeps the timer firing while the user is dragging a slider;
+        // the default run loop mode stalls it during UI tracking.
+        RunLoop.main.add(timer, forMode: .common)
+        captureTimer = timer
     }
 
     private func captureFrame() {
@@ -152,17 +165,23 @@ final class TimeLapseManager: ObservableObject {
         await writer.finishWriting()
 
         if writer.status == .completed {
-            PHPhotoLibrary.shared().performChanges({
+            Permissions.saveToPhotoLibrary({
                 PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: outputURL)
-            }) { _, _ in
-                try? FileManager.default.removeItem(at: outputURL)
-            }
+            }, completion: { success, error in
+                if let error { print("Time-lapse save failed: \(error)") }
+                // Only discard the assembled movie once it is safely in Photos.
+                if success { try? FileManager.default.removeItem(at: outputURL) }
+            })
+        } else if let error = writer.error {
+            print("Time-lapse assembly failed: \(error)")
         }
     }
 
     // MARK: - Pixel buffer helper
 
     private func pixelBuffer(from image: UIImage, size: CGSize) -> CVPixelBuffer? {
+        guard let cgImage = image.cgImage else { return nil }
+
         var buffer: CVPixelBuffer?
         let attrs: [String: Any] = [
             kCVPixelBufferCGImageCompatibilityKey as String: true,
@@ -184,7 +203,7 @@ final class TimeLapseManager: ObservableObject {
                             bytesPerRow: CVPixelBufferGetBytesPerRow(buffer),
                             space: CGColorSpaceCreateDeviceRGB(),
                             bitmapInfo: CGImageAlphaInfo.noneSkipFirst.rawValue)
-        ctx?.draw(image.cgImage!, in: CGRect(origin: .zero, size: size))
+        ctx?.draw(cgImage, in: CGRect(origin: .zero, size: size))
         return buffer
     }
 }
