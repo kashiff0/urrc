@@ -1,7 +1,9 @@
 workflows:
   ios-development:
     name: URReefcam – Development Build
-    max_build_duration: 60
+    # A healthy build finishes well inside 15 minutes. Capping at 30 keeps a
+    # hung run from eating a twelfth of the monthly free-tier allowance.
+    max_build_duration: 30
     instance_type: mac_mini_m1
 
     # Build every push on every branch. Without this the workflow only ran when
